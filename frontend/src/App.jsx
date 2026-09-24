@@ -1,10 +1,7 @@
+import AppRoutes from './routes'
+
 function App() {
-  return (
-    <div>
-      <h1>dynamic-workflow-management</h1>
-      <p>Frontend initialized</p>
-    </div>
-  )
+  return <AppRoutes />
 }
 
 export default App
