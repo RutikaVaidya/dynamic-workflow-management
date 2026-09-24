@@ -1,0 +1,10 @@
+{
+  "name": "dynamic-workflow-management",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A dynamic workflow management system",
+  "scripts": {
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "npm --prefix backend run dev"
+  }
+}
