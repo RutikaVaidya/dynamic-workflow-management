@@ -34,6 +34,12 @@ export async function createStatus(workflowId, versionId, data) {
         data: { isInitial: false },
       })
     }
+    if (isFinal) {
+      await tx.workflowStatus.updateMany({
+        where: { workflowVersionId: versionId, isFinal: true, isActive: { not: false } },
+        data: { isFinal: false },
+      })
+    }
     return tx.workflowStatus.create({
       data: {
         workflowVersionId: versionId,
@@ -91,6 +97,17 @@ export async function updateStatus(workflowId, versionId, statusId, data) {
       await tx.workflowStatus.updateMany({
         where: { workflowVersionId: versionId, isInitial: true, id: { not: statusId } },
         data: { isInitial: false },
+      })
+    }
+    if (isFinal === true) {
+      await tx.workflowStatus.updateMany({
+        where: {
+          workflowVersionId: versionId,
+          isFinal: true,
+          id: { not: statusId },
+          isActive: { not: false },
+        },
+        data: { isFinal: false },
       })
     }
     return tx.workflowStatus.update({

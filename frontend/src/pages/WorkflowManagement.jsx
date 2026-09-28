@@ -25,8 +25,11 @@ import WorkflowTransitionDialog from '../components/workflow/WorkflowTransitionD
 import {
   listWorkflows,
   loadWorkflowData,
+  loadWorkflowVersion,
   getWorkflowStatuses,
   getWorkflowTransitions,
+  createVersion,
+  publishVersion,
   createStatus,
   updateStatus,
   deleteStatus,
@@ -66,6 +69,12 @@ function WorkflowManagement() {
   const [transitionDeleteTarget, setTransitionDeleteTarget] = useState(null)
   const [transitionDeleting, setTransitionDeleting] = useState(false)
   const [transitionDeleteError, setTransitionDeleteError] = useState('')
+
+  const [savingDraft, setSavingDraft] = useState(false)
+
+  const [publishOpen, setPublishOpen] = useState(false)
+  const [publishing, setPublishing] = useState(false)
+  const [publishError, setPublishError] = useState('')
 
   const [notice, setNotice] = useState({ message: '', severity: 'success' })
 
@@ -265,6 +274,70 @@ function WorkflowManagement() {
     }
   }
 
+  async function handleSaveDraft() {
+    if (!workflow) return
+    setSavingDraft(true)
+    try {
+      const existingDraft = workflow.versions?.find((item) => item.status === 'DRAFT') ?? null
+
+      if (existingDraft) {
+        const result = await loadWorkflowVersion(workflow, existingDraft)
+        setData(result)
+        showNotice(
+          data?.version?.id === existingDraft.id
+            ? `Draft Version ${existingDraft.versionNumber} saved`
+            : `Draft Version ${existingDraft.versionNumber} loaded`
+        )
+      } else {
+        const created = await createVersion(workflow.id)
+        const { statuses, transitions, ...versionFields } = created
+        setData({ workflow, version: versionFields, statuses, transitions })
+        setWorkflows((prev) =>
+          prev.map((item) =>
+            item.id === workflow.id
+              ? { ...item, versions: [versionFields, ...(item.versions ?? [])] }
+              : item
+          )
+        )
+        showNotice(`Draft Version ${versionFields.versionNumber} created from published version`)
+      }
+
+      setRevision((current) => current + 1)
+    } catch (err) {
+      showNotice(extractApiError(err), 'error')
+    } finally {
+      setSavingDraft(false)
+    }
+  }
+
+  function handlePublishClick() {
+    setPublishError('')
+    setPublishOpen(true)
+  }
+
+  async function handlePublishConfirm() {
+    if (!workflow || !version) return
+    setPublishing(true)
+    setPublishError('')
+    try {
+      await publishVersion(workflow.id, version.id)
+      setPublishOpen(false)
+
+      const items = await listWorkflows()
+      const updated = items?.find((item) => item.id === workflow.id) ?? workflow
+      setWorkflows(items ?? [])
+
+      const result = await loadWorkflowData(updated)
+      setData(result)
+      setRevision((current) => current + 1)
+      showNotice(`Version ${result.version?.versionNumber} published`)
+    } catch (err) {
+      setPublishError(extractApiError(err))
+    } finally {
+      setPublishing(false)
+    }
+  }
+
   return (
     <>
       <Typography variant="h4" gutterBottom>
@@ -355,7 +428,11 @@ function WorkflowManagement() {
       <WorkflowToolbar
         ready={Boolean(data && workflow)}
         editable={editable}
+        savingDraft={savingDraft}
+        publishing={publishing}
         onAddStatus={openAddDialog}
+        onSaveDraft={handleSaveDraft}
+        onPublish={handlePublishClick}
       />
 
       <WorkflowStatusDialog
@@ -404,6 +481,54 @@ function WorkflowManagement() {
             sx={{ minWidth: 96 }}
           >
             {deleting ? <CircularProgress size={20} /> : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={publishOpen}
+        onClose={publishing ? undefined : () => setPublishOpen(false)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>Publish Version</DialogTitle>
+        <DialogContent>
+          {publishError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {publishError}
+            </Alert>
+          )}
+          <Typography>
+            Publish{' '}
+            <Box component="span" sx={{ fontWeight: 600 }}>
+              {workflow?.name}
+            </Box>{' '}
+            Version {versionNumber}?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Any currently published version will be archived. The published version becomes
+            read-only.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => {
+              setPublishOpen(false)
+              setPublishError('')
+            }}
+            disabled={publishing}
+            color="inherit"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handlePublishConfirm}
+            disabled={publishing}
+            color="success"
+            variant="contained"
+            sx={{ minWidth: 96 }}
+          >
+            {publishing ? <CircularProgress size={20} /> : 'Publish'}
           </Button>
         </DialogActions>
       </Dialog>

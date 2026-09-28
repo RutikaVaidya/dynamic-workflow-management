@@ -17,6 +17,22 @@ export async function getWorkflowById(id) {
   return unwrap(api.get(`/workflows/${id}`))
 }
 
+export function createVersion(workflowId) {
+  return unwrap(api.post(`/workflows/${workflowId}/versions`))
+}
+
+export function publishVersion(workflowId, versionId) {
+  return unwrap(api.post(`/workflows/${workflowId}/versions/${versionId}/publish`))
+}
+
+export async function loadWorkflowVersion(workflow, version) {
+  const [statuses, transitions] = await Promise.all([
+    getWorkflowStatuses(workflow.id, version.id),
+    getWorkflowTransitions(workflow.id, version.id),
+  ])
+  return { workflow, version, statuses, transitions }
+}
+
 export function getWorkflowStatuses(workflowId, versionId) {
   return unwrap(api.get(`/workflows/${workflowId}/versions/${versionId}/statuses`))
 }
@@ -40,6 +56,15 @@ export function updateStatus(workflowId, versionId, statusId, payload) {
 export function deleteStatus(workflowId, versionId, statusId) {
   return unwrap(
     api.delete(`/workflows/${workflowId}/versions/${versionId}/statuses/${statusId}`)
+  )
+}
+
+export function reorderStatuses(workflowId, versionId, payload) {
+  return unwrap(
+    api.patch(
+      `/workflows/${workflowId}/versions/${versionId}/statuses/reorder`,
+      payload
+    )
   )
 }
 
@@ -91,13 +116,17 @@ export default {
   listWorkflows,
   getActiveWorkflow,
   getWorkflowById,
+  createVersion,
+  publishVersion,
   getWorkflowStatuses,
   getWorkflowTransitions,
   createStatus,
   updateStatus,
   deleteStatus,
+  reorderStatuses,
   createTransition,
   deleteTransition,
   extractApiError,
   loadWorkflowData,
+  loadWorkflowVersion,
 }

@@ -1,10 +1,7 @@
 import { AppBar, Box, Container, Tabs, Tab, Toolbar, Typography } from '@mui/material'
 import { Link as RouterLink, Outlet, useLocation } from 'react-router-dom'
 
-const navItems = [
-  { label: 'Dashboard', path: '/dashboard' },
-  { label: 'Workflow Management', path: '/workflows' },
-]
+const navItems = [{ label: 'Dashboard', path: '/dashboard' }]
 
 function MainLayout() {
   const location = useLocation()

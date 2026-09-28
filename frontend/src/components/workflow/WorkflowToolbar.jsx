@@ -1,7 +1,21 @@
 import { Box, Button, Stack, Tooltip, Typography } from '@mui/material'
 
-function WorkflowToolbar({ ready = false, editable = false, onAddStatus, onSaveDraft, onPublish }) {
-  const addStatusTip = editable ? 'Add a new status to this version' : 'Only DRAFT versions can be modified'
+function WorkflowToolbar({
+  ready = false,
+  editable = false,
+  savingDraft = false,
+  publishing = false,
+  onAddStatus,
+  onSaveDraft,
+  onPublish,
+}) {
+  const addStatusTip = editable
+    ? 'Add a new status to this version'
+    : 'Only DRAFT versions can be modified'
+  const saveDraftTip = 'Create or continue the DRAFT version for this workflow'
+  const publishTip = editable
+    ? 'Publish this DRAFT version'
+    : 'Only DRAFT versions can be published'
 
   return (
     <Stack direction="row" spacing={2} sx={{ mt: 2, alignItems: 'center' }}>
@@ -16,26 +30,26 @@ function WorkflowToolbar({ ready = false, editable = false, onAddStatus, onSaveD
           </Button>
         </Box>
       </Tooltip>
-      <Tooltip title={onSaveDraft ? '' : 'Coming soon'}>
+      <Tooltip title={onSaveDraft ? saveDraftTip : 'Coming soon'}>
         <Box component="span">
           <Button
             variant="outlined"
-            disabled={!ready || !onSaveDraft}
+            disabled={!ready || !onSaveDraft || savingDraft}
             onClick={onSaveDraft ?? undefined}
           >
-            Save Draft
+            {savingDraft ? 'Saving Draft...' : 'Save Draft'}
           </Button>
         </Box>
       </Tooltip>
-      <Tooltip title={onPublish ? '' : 'Coming soon'}>
+      <Tooltip title={onPublish ? publishTip : 'Coming soon'}>
         <Box component="span">
           <Button
             variant="contained"
             color="success"
-            disabled={!ready || !onPublish}
+            disabled={!ready || !editable || !onPublish || publishing}
             onClick={onPublish ?? undefined}
           >
-            Publish
+            {publishing ? 'Publishing...' : 'Publish'}
           </Button>
         </Box>
       </Tooltip>

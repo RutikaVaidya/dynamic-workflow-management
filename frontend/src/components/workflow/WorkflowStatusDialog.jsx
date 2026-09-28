@@ -40,7 +40,7 @@ function createInitialValues(status) {
   }
 }
 
-function StatusForm({ mode, status, onSubmit, submitting, error }) {
+function StatusForm({ mode, status, onSubmit, onClose, submitting, error }) {
   const [values, setValues] = useState(() => createInitialValues(status))
   const [fieldError, setFieldError] = useState('')
 
