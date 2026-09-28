@@ -21,6 +21,7 @@ import {
 import WorkflowCanvas from '../components/workflow/WorkflowCanvas'
 import WorkflowToolbar from '../components/workflow/WorkflowToolbar'
 import WorkflowStatusDialog from '../components/workflow/WorkflowStatusDialog'
+import WorkflowTransitionDialog from '../components/workflow/WorkflowTransitionDialog'
 import {
   listWorkflows,
   loadWorkflowData,
@@ -29,6 +30,8 @@ import {
   createStatus,
   updateStatus,
   deleteStatus,
+  createTransition,
+  deleteTransition,
   extractApiError,
 } from '../services/workflow'
 
@@ -56,7 +59,15 @@ function WorkflowManagement() {
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
 
-  const [snackbar, setSnackbar] = useState('')
+  const [transitionDialog, setTransitionDialog] = useState(null)
+  const [transitionSubmitting, setTransitionSubmitting] = useState(false)
+  const [transitionError, setTransitionError] = useState('')
+
+  const [transitionDeleteTarget, setTransitionDeleteTarget] = useState(null)
+  const [transitionDeleting, setTransitionDeleting] = useState(false)
+  const [transitionDeleteError, setTransitionDeleteError] = useState('')
+
+  const [notice, setNotice] = useState({ message: '', severity: 'success' })
 
   const [revision, setRevision] = useState(0)
 
@@ -148,6 +159,10 @@ function WorkflowManagement() {
     setDeleteError('')
   }
 
+  function showNotice(message, severity = 'success') {
+    setNotice({ message, severity })
+  }
+
   async function handleDialogSubmit(values) {
     if (!workflow || !version) return
     setSubmitting(true)
@@ -157,13 +172,13 @@ function WorkflowManagement() {
         const nextOrder =
           (data?.statuses?.reduce((max, item) => Math.max(max, item.displayOrder ?? 0), 0) ?? 0) + 1
         await createStatus(workflow.id, version.id, { ...values, displayOrder: nextOrder })
-        setSnackbar(`Status '${values.name}' created`)
+        showNotice(`Status '${values.name}' created`)
       } else if (editingStatus) {
         await updateStatus(workflow.id, version.id, editingStatus.id, {
           ...values,
           displayOrder: editingStatus.displayOrder,
         })
-        setSnackbar(`Status '${values.name}' updated`)
+        showNotice(`Status '${values.name}' updated`)
       }
       setDialogOpen(false)
       await refreshStatuses()
@@ -181,12 +196,72 @@ function WorkflowManagement() {
     try {
       await deleteStatus(workflow.id, version.id, deleteTarget.id)
       setDeleteTarget(null)
-      setSnackbar(`Status '${deleteTarget.name}' deleted`)
+      showNotice(`Status '${deleteTarget.name}' deleted`)
       await refreshStatuses()
     } catch (err) {
       setDeleteError(extractApiError(err))
     } finally {
       setDeleting(false)
+    }
+  }
+
+  function handleCanvasConnect({ source, target }) {
+    if (!source || !target) return
+    if (source.id === target.id) {
+      showNotice('A status cannot connect to itself.', 'error')
+      return
+    }
+    if (!editable) {
+      showNotice('Published versions are read-only. Transition requires a DRAFT version.', 'error')
+      return
+    }
+    setTransitionDialog({ source, target })
+    setTransitionError('')
+  }
+
+  function handleEdgeClick(transition) {
+    if (!transition) return
+    if (!editable) {
+      showNotice('Published versions are read-only. Transitions cannot be deleted.', 'error')
+      return
+    }
+    setTransitionDeleteTarget(transition)
+    setTransitionDeleteError('')
+  }
+
+  async function handleTransitionSubmit(values) {
+    if (!workflow || !version || !transitionDialog) return
+    setTransitionSubmitting(true)
+    setTransitionError('')
+    try {
+      await createTransition(workflow.id, version.id, {
+        fromStatusId: transitionDialog.source.id,
+        toStatusId: transitionDialog.target.id,
+        ...values,
+      })
+      setTransitionDialog(null)
+      showNotice(`Transition '${values.actionLabel}' created`)
+      await refreshStatuses()
+    } catch (err) {
+      setTransitionError(extractApiError(err))
+    } finally {
+      setTransitionSubmitting(false)
+    }
+  }
+
+  async function handleTransitionDelete() {
+    if (!workflow || !version || !transitionDeleteTarget) return
+    setTransitionDeleting(true)
+    setTransitionDeleteError('')
+    try {
+      await deleteTransition(workflow.id, version.id, transitionDeleteTarget.id)
+      setTransitionDeleteTarget(null)
+      showNotice(`Transition '${transitionDeleteTarget.actionLabel}' deleted`)
+      await refreshStatuses()
+    } catch (err) {
+      setTransitionDeleteError(extractApiError(err))
+    } finally {
+      setTransitionDeleting(false)
     }
   }
 
@@ -272,6 +347,8 @@ function WorkflowManagement() {
           editable={editable}
           onEditStatus={openEditDialog}
           onDeleteStatus={openDeleteConfirm}
+          onConnect={handleCanvasConnect}
+          onEdgeClick={handleEdgeClick}
         />
       )}
 
@@ -332,15 +409,80 @@ function WorkflowManagement() {
       </Dialog>
 
       <Snackbar
-        open={Boolean(snackbar)}
+        open={Boolean(notice.message)}
         autoHideDuration={3000}
-        onClose={() => setSnackbar('')}
+        onClose={() => setNotice({ message: '', severity: 'success' })}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert severity="success" variant="filled" onClose={() => setSnackbar('')}>
-          {snackbar}
+        <Alert
+          severity={notice.severity}
+          variant="filled"
+          onClose={() => setNotice({ message: '', severity: 'success' })}
+        >
+          {notice.message}
         </Alert>
       </Snackbar>
+
+      <WorkflowTransitionDialog
+        open={Boolean(transitionDialog)}
+        source={transitionDialog?.source ?? null}
+        target={transitionDialog?.target ?? null}
+        onSubmit={handleTransitionSubmit}
+        onClose={() => setTransitionDialog(null)}
+        submitting={transitionSubmitting}
+        error={transitionError}
+      />
+
+      <Dialog
+        open={Boolean(transitionDeleteTarget)}
+        onClose={transitionDeleting ? undefined : () => setTransitionDeleteTarget(null)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>Delete Transition</DialogTitle>
+        <DialogContent>
+          {transitionDeleteError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {transitionDeleteError}
+            </Alert>
+          )}
+          <Typography>
+            Delete transition{' '}
+            <Box component="span" sx={{ fontWeight: 600 }}>
+              {transitionDeleteTarget?.actionLabel}
+            </Box>
+            {transitionDeleteTarget?.fromStatus?.name &&
+              transitionDeleteTarget?.toStatus?.name && (
+                <>
+                  {' '}
+                  ({transitionDeleteTarget.fromStatus.name} → {transitionDeleteTarget.toStatus.name})
+                </>
+              )}
+            ?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setTransitionDeleteTarget(null)}
+            disabled={transitionDeleting}
+            color="inherit"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleTransitionDelete}
+            disabled={transitionDeleting}
+            color="error"
+            variant="contained"
+            sx={{ minWidth: 96 }}
+          >
+            {transitionDeleting ? <CircularProgress size={20} /> : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   )
 }

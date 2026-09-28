@@ -72,6 +72,7 @@ function buildEdges(statuses, transitions) {
       target: String(transition.toStatusId),
       label: transition.actionLabel || transition.actionName,
       animated: true,
+      interactionWidth: 20,
       markerEnd: { type: MarkerType.ArrowClosed },
     }))
 }
@@ -82,6 +83,8 @@ function WorkflowCanvas({
   editable = false,
   onEditStatus,
   onDeleteStatus,
+  onConnect,
+  onEdgeClick,
 }) {
   const activeStatuses = statuses.filter((status) => status.isActive !== false)
   const activeTransitions = transitions.filter((transition) => transition.isActive !== false)
@@ -92,6 +95,24 @@ function WorkflowCanvas({
   const [edges, , onEdgesChange] = useEdgesState(
     buildEdges(activeStatuses, activeTransitions)
   )
+
+  const statusById = Object.fromEntries(activeStatuses.map((s) => [String(s.id), s]))
+  const transitionById = Object.fromEntries(
+    activeTransitions.map((t) => [String(t.id), t])
+  )
+
+  function handleConnect(connection) {
+    if (typeof onConnect !== 'function') return
+    onConnect({
+      source: statusById[connection.source] ?? null,
+      target: statusById[connection.target] ?? null,
+    })
+  }
+
+  function handleEdgeClick(event, edge) {
+    if (typeof onEdgeClick !== 'function') return
+    onEdgeClick(transitionById[edge.id] ?? null)
+  }
 
   return (
     <Box
@@ -110,6 +131,8 @@ function WorkflowCanvas({
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onConnect={handleConnect}
+        onEdgeClick={handleEdgeClick}
         nodeTypes={nodeTypes}
         fitView
         fitViewOptions={{ padding: 0.25 }}

@@ -43,6 +43,18 @@ export function deleteStatus(workflowId, versionId, statusId) {
   )
 }
 
+export function createTransition(workflowId, versionId, payload) {
+  return unwrap(
+    api.post(`/workflows/${workflowId}/versions/${versionId}/transitions`, payload)
+  )
+}
+
+export function deleteTransition(workflowId, versionId, transitionId) {
+  return unwrap(
+    api.delete(`/workflows/${workflowId}/versions/${versionId}/transitions/${transitionId}`)
+  )
+}
+
 export function extractApiError(err) {
   const message = err?.response?.data?.message || err?.message || 'Request failed'
   const details = err?.response?.data?.errors
@@ -84,6 +96,8 @@ export default {
   createStatus,
   updateStatus,
   deleteStatus,
+  createTransition,
+  deleteTransition,
   extractApiError,
   loadWorkflowData,
 }
