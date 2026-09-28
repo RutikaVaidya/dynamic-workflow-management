@@ -50,13 +50,13 @@ function buildLayout(statuses, transitions) {
   return positions
 }
 
-function buildNodes(statuses, transitions) {
+function buildNodes(statuses, transitions, editable, onEditStatus, onDeleteStatus) {
   const positions = buildLayout(statuses, transitions)
   return statuses.map((status) => ({
     id: String(status.id),
     type: 'workflow',
     position: positions[status.id] ?? { x: 0, y: 0 },
-    data: { status },
+    data: { status, editable, onEdit: onEditStatus, onDelete: onDeleteStatus },
   }))
 }
 
@@ -76,12 +76,18 @@ function buildEdges(statuses, transitions) {
     }))
 }
 
-function WorkflowCanvas({ statuses = [], transitions = [] }) {
+function WorkflowCanvas({
+  statuses = [],
+  transitions = [],
+  editable = false,
+  onEditStatus,
+  onDeleteStatus,
+}) {
   const activeStatuses = statuses.filter((status) => status.isActive !== false)
   const activeTransitions = transitions.filter((transition) => transition.isActive !== false)
 
   const [nodes, , onNodesChange] = useNodesState(
-    buildNodes(activeStatuses, activeTransitions)
+    buildNodes(activeStatuses, activeTransitions, editable, onEditStatus, onDeleteStatus)
   )
   const [edges, , onEdgesChange] = useEdgesState(
     buildEdges(activeStatuses, activeTransitions)

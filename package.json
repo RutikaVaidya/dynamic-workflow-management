@@ -4,6 +4,7 @@
   "private": true,
   "description": "A dynamic workflow management system",
   "scripts": {
+    "dev": "node scripts/dev.js",
     "dev:frontend": "npm --prefix frontend run dev",
     "dev:backend": "npm --prefix backend run dev"
   }

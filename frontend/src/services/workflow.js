@@ -25,6 +25,33 @@ export function getWorkflowTransitions(workflowId, versionId) {
   return unwrap(api.get(`/workflows/${workflowId}/versions/${versionId}/transitions`))
 }
 
+export function createStatus(workflowId, versionId, payload) {
+  return unwrap(
+    api.post(`/workflows/${workflowId}/versions/${versionId}/statuses`, payload)
+  )
+}
+
+export function updateStatus(workflowId, versionId, statusId, payload) {
+  return unwrap(
+    api.put(`/workflows/${workflowId}/versions/${versionId}/statuses/${statusId}`, payload)
+  )
+}
+
+export function deleteStatus(workflowId, versionId, statusId) {
+  return unwrap(
+    api.delete(`/workflows/${workflowId}/versions/${versionId}/statuses/${statusId}`)
+  )
+}
+
+export function extractApiError(err) {
+  const message = err?.response?.data?.message || err?.message || 'Request failed'
+  const details = err?.response?.data?.errors
+  if (Array.isArray(details) && details.length > 0) {
+    return `${message}: ${details.join('; ')}`
+  }
+  return message
+}
+
 export async function loadWorkflowData(workflow) {
   try {
     return await getActiveWorkflow(workflow.code)
@@ -54,5 +81,9 @@ export default {
   getWorkflowById,
   getWorkflowStatuses,
   getWorkflowTransitions,
+  createStatus,
+  updateStatus,
+  deleteStatus,
+  extractApiError,
   loadWorkflowData,
 }

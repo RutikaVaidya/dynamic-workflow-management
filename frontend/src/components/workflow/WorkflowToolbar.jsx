@@ -1,13 +1,15 @@
 import { Box, Button, Stack, Tooltip, Typography } from '@mui/material'
 
-function WorkflowToolbar({ ready = false, onAddStatus, onSaveDraft, onPublish }) {
+function WorkflowToolbar({ ready = false, editable = false, onAddStatus, onSaveDraft, onPublish }) {
+  const addStatusTip = editable ? 'Add a new status to this version' : 'Only DRAFT versions can be modified'
+
   return (
     <Stack direction="row" spacing={2} sx={{ mt: 2, alignItems: 'center' }}>
-      <Tooltip title={onAddStatus ? '' : 'Coming soon'}>
+      <Tooltip title={onAddStatus ? addStatusTip : 'Coming soon'}>
         <Box component="span">
           <Button
             variant="contained"
-            disabled={!ready || !onAddStatus}
+            disabled={!ready || !editable || !onAddStatus}
             onClick={onAddStatus ?? undefined}
           >
             + Add Status
